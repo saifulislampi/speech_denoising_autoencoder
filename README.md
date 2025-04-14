@@ -57,3 +57,42 @@ Synthetic High-Frequency Noise: Clean speech from the LibriSpeech dataset will b
 - **Generalization:** While trained on synthetic noise, the final evaluation will include real-world noise to test robustness.
 
 
+
+## Part 2: Dataset
+This project uses the LibriSpeech ASR Corpus, a publicly available collection of clean, read English speech, as the primary source for training and validation data. To simulate noisy conditions, synthetic high-frequency noise will be added to clean speech samples, creating paired noisy-clean examples for training a self-supervised denoising model.
+
+### Data Source
+
+#### LibriSpeech (train-clean-100)
+
+- ~100 hours of high-quality read English speech
+
+- Used for generating training and validation data
+
+- [Dataset Link](https://www.openslr.org/12)
+
+#### LibriSpeech (dev-clean)
+
+- Smaller development set for validation and tuning
+
+- Ensures the model generalizes to unseen speaker data
+- [Dataset Link](https://www.openslr.org/12)
+
+#### Custom Noisy Speech Samples
+- Real-world recordings of speech with high-frequency noise
+- Used for final evaluation of the model's performance in practical scenarios
+
+### Dataset Splits
+- **Training Set (≈60%):** Subset of LibriSpeech train-clean-100, with synthetic noise added. Used to optimize model weights. And dev-clean for early prototyping.
+
+- **Validation Set (≈20%):** Another subset from train-clean-100 and dev-clean. Used for hyperparameter tuning and early stopping.
+
+- **Test Set (≈20%):** Another subset from train-clean-100 and dev-clean. And real-world recordings. Used for final evaluation of the model's performance.
+
+### Data Preprocessing
+Todo: Describe data preprocessing steps using taskvine and floability here. Upload code. 
+
+### Audio Samples
+- **Clean Speech:** Original recordings from LibriSpeech. (Todo: add link)
+- **Noisy Speech:** Clean speech samples with synthetic high-frequency noise added. (Todo: add link)
+
