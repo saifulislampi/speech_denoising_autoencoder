@@ -90,9 +90,122 @@ This project uses the LibriSpeech ASR Corpus, a publicly available collection of
 - **Test Set (≈20%):** Another subset from train-clean-100 and dev-clean. And real-world recordings. Used for final evaluation of the model's performance.
 
 ### Data Preprocessing
-Todo: Describe data preprocessing steps using taskvine and floability here. Upload code. 
+Todo: Describe distributed data preprocessing steps using taskvine and floability here. Upload code. 
 
 ### Audio Samples
-- **Clean Speech:** Original recordings from LibriSpeech. (Todo: add link)
-- **Noisy Speech:** Clean speech samples with synthetic high-frequency noise added. (Todo: add link)
+- **Clean Speech:** Original recordings from LibriSpeech. ([8555-292519-0015.flac](sample-data/clean/8555-292519-0015.flac))
+- **Noisy Speech:** Clean speech samples with synthetic high-frequency noise added.(
+[8555-292519-0015.flac](sample-data/noisy/8555-292519-0015.flac))
 
+## Part 3: First Update
+
+### Overview
+
+In this stage of the project, we have begun implementing and testing our proposed speech denoiser based on a U-Net autoencoder. Our initial goals were:
+
+1. To establish a workable training pipeline that can load clean/noisy speech pairs, split them into a consistent format, and feed them into our neural network.
+
+2. To overcome dimension mismatches caused by variable-length audio.
+
+3. To run enough epochs to obtain an initial sense of interim results on the test-clean subset of LibriSpeech (augmented with synthetic high-frequency noise).
+
+We have now placed all relevant code in our GitHub repository, ensuring it is easy to follow. This code includes:
+
+- Preprocessing scripts to split variable-length audio files into fixed 2-second segments.
+
+- Dataset classes to load paired .flac files, compute STFT log-magnitudes, and apply the same normalization used during training.
+
+- A U-Net model definition (in PyTorch) that downsamples along the time axis and uses skip connections to preserve high-resolution details.
+
+- Training routines that combine a magnitude-domain loss (L1 on spectrogram) with a time-domain loss (L1 on the waveform reconstructed via the noisy phase).
+
+
+### Architecture Recap
+Our approach employs a U-Net autoencoder that operates on log-magnitude STFT features. In more detail:
+
+#### 1. STFT & Log Magnitude
+- Each audio file is sampled at 16 kHz.
+
+- We compute the Short-Time Fourier Transform (STFT) using n_fft=512, hop_length=128, and win_length=512.
+
+- We take the magnitude of each complex STFT frame, then apply log(1+magnitude). This compresses the dynamic range and helps the network learn more effectively.
+
+#### 2. Min-Max Normalization
+- We gather global min and max log-magnitudes across a portion of the training set to define a scaling from [0,1].
+
+- We scale each spectrogram to [0,1], feed it to the network, and then unscale at the output stage. This helps keep training stable and consistent.
+
+#### 3. U-Net Structure
+
+- **Downsampling:** We use two downsampling levels, but only along the time dimension (via MaxPool2d(kernel_size=(1,2))). This preserves the frequency dimension (which is often 257 bins for n_fft=512) and prevents dimension mismatches when we do skip connections.
+
+- **Bottleneck:** After the second downsampling, we have a “bottleneck” block that learns high-level or global features of the spectrogram.
+
+- **Upsampling:** We upsample to match the skip-connection shapes using F.interpolate(..., size=...), ensuring the exact original frequency/time shape is recovered.
+
+- **Final:** A Conv2d(..., out_channels=1) plus a sigmoid activation returns the predicted log-magnitude (normalized to [0..1]), which we then unscale and exponentiate to revert to a linear magnitude.
+
+#### 4. Hybrid Loss
+
+- **Spectrogram (magnitude) loss:** L1 difference between predicted log-magnitude and target log-magnitude.
+
+- **Waveform loss:** We take our predicted magnitude, combine it with the noisy phase, do iSTFT, and then measure L1 difference in time domain.
+
+- By weighting these two objectives, we encourage accurate magnitude prediction and a plausible waveform reconstruction.
+
+<!-- 
+Thus, the network can handle 2D spectrograms (time vs. frequency) with a consistent shape for each batch, while leveraging skip connections to capture both local and global features relevant to removing high-frequency noise. -->
+
+### Challenges Encountered
+#### 1. Variable-Length Audio
+One of our biggest early hurdles was dealing with the fact that LibriSpeech test-clean files come in varying durations. Similarly, real-world recordings or augmented noisy files can also differ widely. If we simply load entire waveforms, we get random shape mismatches (e.g., the STFT might have a time dimension of 125 frames in one file and 121 frames in another).
+
+- **Initial Attempt:** We tried random slicing or dynamic upsampling, but it complicated the skip connections in the U-Net.
+
+- **Chosen Solution:** We decided to split all audio into 2-second segments (exactly 32,000 samples at 16 kHz). This ensures each segment has a consistent shape. Then, the U-Net always deals with a fixed frequency/time shape, no matter which segment is loaded.
+ <!-- (time dimension = 250 STFT frames). -->
+ 
+
+- **Implementation:** In the included notebook for part 1, you can see our create_2sec_segments(...) function that loads each (clean, noisy) file pair, cuts them into 2-second chunks, and saves them as .flac. We skip any leftover <2s to keep it simple. 
+
+#### 2. Normalization
+Another challenge was ensuring we store and re-use the same min,max from training time at inference. Without these exact values, the model sees a different input scale at inference and produces degraded results.
+
+- We overcame this by saving the global_min and global_max in a JSON file (same name as the model). So, if you check out model_2s_10_epoch.pth you’ll also see model_2s_10_epoch_params.json in the repo.
+
+- This ensures reproducibility and consistent inference on any new noisy file.
+
+#### Matching Clean & Noisy
+We also needed to guarantee that for each 2s chunk, the “clean” .flac file and the “noisy” .flac file truly align. Sorting file lists by name might not be reliable if folder structures differ.
+
+- We overcame this by building “maps” keyed by basename. That is, for each .flac in the clean folder, we store a dictionary entry {filename -> full_path}, and do the same for the noisy folder. Then we intersect the sets to get a common set of filenames.
+
+- This ensures the chunk “123-456-0001_seg0.flac” in the clean folder pairs exactly with “123-456-0001_seg0.flac” in the noisy folder.
+
+### Training Speed & Preliminary Results
+We trained for ~10 epochs on the LibriSpeech test-clean data. The results are promising: you can audibly hear a significant reduction in high-frequency hiss when comparing the “Noisy” vs. “Denoised” audio. However, some distortion or muffling may still exist. We plan to refine the model further with more data and more epochs.
+
+- **Noisy 2 Test Sample:** [noisy-test-sample-1.wav](sample-data/noisy/noisy-test-sample-1.wav)
+- **Denoised 2s Test Sample:** [denoised-test-sample-1.wav](sample-data/denoised/denoised-test-sample-1.wav)
+
+### Next Steps
+#### 1. Train on Larger Data
+Our next major milestone is to move beyond the ~1–2 hours of test-clean data to the train-clean-100 set (100 hours). That means we’ll generate many more 2-second segments, leading to a dataset large enough to capture robust patterns and handle real-world high-frequency noise.
+
+We anticipate better generalization and more stable training with a larger dataset.
+
+#### 2. Explore Additional Loss Functions
+
+We currently combine an L1 spectrogram loss with an L1 time-domain loss. However, we might also consider more advanced STFT losses that weigh different frequency regions.
+We can also measure objective speech quality metrics like PESQ or STOI to track improvements.
+
+
+#### 3. Evaluate on Unseen Audio
+We want to test on “unknown” audio , potentially from real-world recordings with environmental or equipment-based high-frequency noise. Because we store and share global_min, global_max, and STFT parameters, we can easily load any 16 kHz audio and run inference using the same approach. In the next update we will use train/validate/test split on train-clean-100 data. And in final update we will use real world recording. 
+
+If the audio is longer than 2 seconds, we can split it (like we do in training) into multiple 2s segments, denoise each, then concatenate results.
+
+#### Code
+Here is the [notebook](part3-first-update-files/audio_denoising_poc_1.ipynb) for part3. It has all the code and results discussed above.
+
+**Notes on LLM Usage:** I used chatgpt for brainstorming and refining my ideas. And I used copilot autocomplete for fixing grammar and sentence structure in this document.
