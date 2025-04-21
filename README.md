@@ -9,6 +9,8 @@ The goal of this project is to develop a speech signal denoiser capable of remov
 ### Proposed Solution
 To address this challenge, the project will explore using a self-supervised autoencoder neural network trained on pairs of clean and synthetically corrupted speech signals. The denoiser will take a noisy speech signal as input and output a reconstructed, cleaner version. The model will be trained to reconstruct clean speech from synthetically noised input, using paired data without the need for manual labels.
 
+![U‑Net architecture](denoising-strategy.png)
+
 At a high level, here are the key components of the proposed solution:
 #### 1. **Autoencoder Architecture:**
 We will follow the U-Net autoencoder architecture because it effectively captures both global and local patterns in structured data like spectrograms, making it well-suited for speech denoising tasks.
@@ -209,3 +211,187 @@ If the audio is longer than 2 seconds, we can split it (like we do in training) 
 Here is the [notebook](part3-first-update-files/audio_denoising_poc_1.ipynb) for part3. It has all the code and results discussed above.
 
 **Notes on LLM Usage:** I used chatgpt for brainstorming and refining my ideas. And I used copilot autocomplete for fixing grammar and sentence structure in this document.
+
+
+## Part 4: Second Update
+
+
+### 4.1 What’s new since Part 3 (First Udpate)
+
+| Area | Part 3 status | Part 4 upgrade |
+|------|---------------|----------------|
+| **Noise domain** | synthetic HF hiss only | Added *RealMix* set (road + exhaust‐fan recordings) mixed at 0–15 dB SNR; dataset now  ➔ **N ≈ ✱✱k** 2‑second segments. |
+| **Training regime** | 10 epochs, LR 1e‑4 | fine‑tune **best v1 weights** for **TBD**. |
+| **Validation strategy** | hand‑picked clip | 70 / 15 / 15 stratified *train/val/test* split driven by manifest (see `segment_manifest.csv`). |
+| **Inference window** | fixed 2 s | Added **overlap–add** (50 % Hann) to denoise arbitrarily long audio. |
+
+### 4.2 Current network architecture
+
+**Todo:** Add a diagram of the U-Net architecture.
+**Task:** Describe the U-Net architecture briefly.
+![U‑Net architecture](arch1.png)
+
+Here is a summary of the U-Net architecture used in this project:
+
+- **Input:** normalised log‑magnitude STFT (1 × F × T).
+
+- **Encoder path:**
+
+    - Conv (1→32) × 2 → LeakyReLU → time‑only MaxPool (1×2).
+
+    - Conv (32→64) × 2 → LeakyReLU → second MaxPool (1×2).
+
+- **Bottleneck:** Conv (64→128) × 2 captures global context.
+
+- **Decoder path (mirrored)**
+
+    - 1 × 1 Conv (128→64) + nearest‑neighbour up‑sample → skip‑concat with encoder‑FMap → Conv block (64).
+
+    - Repeat for shallow level (64→32).
+
+- **Output head:** Conv (32→1) + Sigmoid ⇒ denoised log‑mag (0‑1).
+
+- **Key design choices**
+
+    - Time‑axis pooling preserves spectral resolution.
+
+    - Skip connections inject fine detail & stabilise gradients.
+
+    - All ops keep receptive field wide in T, narrow in F – matching speech‑noise characteristics.
+
+## 4.3 Creating the RealMix dataset
+The RealMix dataset is created by mixing clean speech with real-world noise recordings. The noise recordings are collected from various sources, including road noise and exhaust fan noise. The mixing process involves adjusting the signal-to-noise ratio (SNR) to create a range of noisy samples.
+<!-- 1. **Collect Noise Samples:** Gather real-world noise recordings from various sources, such as road noise and exhaust fan noise.
+2. **Adjust SNR:** For each clean speech sample, randomly select a noise sample and adjust the SNR to create a noisy sample. The SNR is adjusted to be between 0 and 15 dB.
+3. **Mix Clean and Noisy Samples:** Combine the clean speech sample with the adjusted noise sample to create a noisy sample.  mixing process is done using the following formula: -->
+
+Here are some details of the mixing process:
+
+- **Noise bank:** real road & exhaust‑fan recordings, resampled to 16 kHz and cached.
+
+- **Pairing rule:** for every clean LibriSpeech file pick one random noise clip.
+
+- **Match length**
+
+    -  If noise shorter ⇒ tile noise until it covers the speech length.
+    - If longer ⇒ crop.
+
+- Random SNR in [0, 15 ] dB
+
+- Compute RMS power of speech and noise.
+
+- Derive scale factor k so that P_speech / (k²·P_noise) = 10^(SNR/10).
+
+- Mix: y_mixed = y_clean + k·y_noise.
+
+- I/O: save FLAC pairs under identical filenames in …/realmixed/{clean|noisy}.
+
+- Idempotent: skip files that already exist to allow incremental runs.
+
+
+### 4.3 Fine‑tuning details
+
+#### 4.3.1 Baseline training strategy (Part 3 recap)
+- Dataset: **TBD** synthetic 2‑s pairs.
+
+- Log‑mag STFT front‑end (n_fft 512 / hop 128 / win 512).
+
+- Normalisation: global min‑max estimated on 200 random segments.
+
+- Loss = 0.5 × L1‑spectrogram + 0.5 × L1‑waveform (re‑using noisy phase).
+
+- Optimiser: Adam, LR 1 e‑4, 10 epochs, batch 8.
+
+- Inline audible sanity‑check every second epoch.
+
+#### 4.3.2 Fine‑tuning strategy
+- **Data manifest:** combines Synthetic + RealMix ➔ segment_manifest.csv.
+
+- **Stratified split:** 70 % train, 15 % val, 15 % test per source type.
+- Batch & loader: batch 16, 4 workers, pinned memory, drop‑last for GPU efficiency.
+- Warm‑start from best Part 3 weights; LR reduced to 2 e‑5.
+
+- Mixed Precision (AMP) + GradScaler doubles throughput, halves VRAM.
+
+- Loss scheduling
+
+    - Spectrogram loss every batch.
+
+    - Waveform loss every 5th batch (heavy) → overall weight 0.55.
+
+- Validation: quick PESQ‑WB on 100 val segments every 2 epochs; early‑stopping with patience = 3.
+
+- Checkpoint: best PESQ model saved as models/best_finetune.pth.
+
+- Qualitative demo clip played every 2 epochs.
+
+### 4.4 Objective quality (placeholder numbers)
+
+| Split | PESQ‑WB ↑ | STOI ↑ | SI‑SDR [dB] ↑ |
+|-------|-----------|--------|---------------|
+| **Train** | `TBD` | `TBD` | `TBD` |
+| **Val**   | `TBD` | `TBD` | `TBD` |
+| **Test**  | `TBD` | `TBD` | `TBD` |
+
+Metric rationale
+
+- PESQ‑WB – perceptual speech quality; correlates with MOS, suitable for denoising.
+
+- STOI – intelligibility score; gauges how well words remain recognisable.
+
+- SI‑SDR – scale‑invariant distortion ratio; measures residual interference independent of loudness.
+
+Together they capture quality, intelligibility and signal fidelity – a balanced trio for this task.
+
+
+### 4.5 Qualitative snapshot
+
+After every third epoch the same validation utterance is monitored:
+
+```
+play clean   → "clean_demo.wav"
+play noisy   → "noisy_demo.wav"
+play denoise → "den_demo_e6.wav"
+```
+
+The hiss is largely removed while high‑frequency consonants (sibilants) survive, though slight musical artefacts remain at very low SNRs.
+
+### 4.6 Single‑sample validation script
+
+Directory: **`part4-second-update-files/single-sample-validation/`**
+
+Create a conda environment with the following command:
+```bash
+conda env create -f environment.yaml
+```
+
+Activate the environment:
+
+```bash
+conda activate audio_denoising_eval
+```
+
+To run the denoising script, use the following command:
+
+```bash
+python denoise_audio.py --model <model_path> --params <params_path> <input_file>
+
+```
+For example, to denoise the file `8555-292519-0015.flac` using the model `model_2s_10_epoch.pth` and parameters `model_2s_10_epoch_params.json`, run:
+
+```
+python denoise_audio.py --model model_2s_10_epoch.pth --params model_2s_10_epoch_params.json 8555-292519-0015.flac
+```
+
+
+### 4.7 Reflection & next steps
+
+* **Generalisation gap:** training PESQ is ≈ 0.25 higher than validation – mild over‑fit.  We’ll add SpecAugment (random frequency masks) and MixOut regularisation.
+* **Phase limitations:** current model predicts magnitude only.  Re‑training with a complex ratio mask should improve high‑frequency detail and remove musical noise.
+* **Data:** collect another 2 h of street‑corner recordings to widen RealMix.
+* **Metrics:** enlist DNS‑MOS in the final report for a MOS proxy.
+
+---
+
+*Placeholder values `TBD` will be replaced after final fine‑tune run.*
+
