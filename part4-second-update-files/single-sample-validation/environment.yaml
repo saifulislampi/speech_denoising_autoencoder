@@ -1,0 +1,15 @@
+name: audio_denoising_eval
+channels:
+  - conda-forge
+dependencies:
+  - python=3.10
+  - pytorch
+  - torchaudio
+  - librosa
+  - pysoundfile 
+  - numpy
+  - tqdm
+  - pip
+  - pip:
+      - pesq
+

@@ -7,8 +7,9 @@ import soundfile as sf
 import torch.nn as nn
 import torch.nn.functional as F
 from pesq import pesq
+from typing import Tuple
 
-class SimpleUNet(nn.Module):
+class DenoisingUNet(nn.Module):
     def __init__(self):
         super().__init__()
         self.enc1 = nn.Sequential(nn.Conv2d(1, 32, 3, padding=1), nn.LeakyReLU(0.2),
@@ -37,10 +38,10 @@ class SimpleUNet(nn.Module):
         d1 = self.dec1(torch.cat([u1, e1], dim=1))
         return d1
 
-def load_model_and_params(model_path, json_path, device="cuda"):
+def load_model_and_params(model_path, json_path, device="cpu"):
     with open(json_path) as f:
         params = json.load(f)
-    model = SimpleUNet().to(device)
+    model = DenoisingUNet().to(device)
     model.load_state_dict(torch.load(model_path, map_location=device))
     model.eval()
     return model, params
@@ -50,7 +51,7 @@ def _denoise_segment(
     model: torch.nn.Module,
     params: dict,
     seg: np.ndarray,
-    device = "cuda"
+    device = "cpu"
 ) -> np.ndarray:
     """Run one 2‑second segment (exactly 32000 samples) through the U‑Net."""
     gmin, gmax = params["global_min"], params["global_max"]
