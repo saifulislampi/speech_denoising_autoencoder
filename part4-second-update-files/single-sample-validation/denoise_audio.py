@@ -132,7 +132,7 @@ def main():
     parser = argparse.ArgumentParser(description="Denoise long audio files with SimpleUNet")
     parser.add_argument("noisy_audio", type=str, help="Path to noisy input audio (.flac/.wav)")
     parser.add_argument("--clean_audio", type=str, default=None, help="Path to clean reference audio")
-    parser.add_argument("--output", type=str, default="denoised_output.flac", help="Output path")
+    parser.add_argument("--output", type=str, default="denoised_output.wav", help="Output path")
     parser.add_argument("--model", type=str, default="model_2s_10_epoch.pth", help="Model file path")
     parser.add_argument("--params", type=str, default="model_2s_10_epoch_params.json", help="Params file path")
     parser.add_argument("--overlap", type=float, default=0.5, help="Overlap ratio between segments")
