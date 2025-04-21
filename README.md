@@ -343,8 +343,19 @@ Metric rationale
 
 Together they capture quality, intelligibility and signal fidelity – a balanced trio for this task.
 
+### 4.5 Denoising Longer Audio
+The model is trained on 2‑s segments, but we want to denoise longer audio files. To achieve this, we use an overlap–add strategy with a 50% overlap and a Hann window.
+This involves the following steps:
+1. **Segment the audio:** Split the input audio into overlapping 2‑s segments with a 50% overlap.
+2. **Denoise each segment:** Pass each segment through the trained model to obtain the denoised output.
+3. **Overlap–add:** Combine the denoised segments using a Hann window to smooth the transitions between segments.
+4. **Output the final denoised audio:** Save the combined output as a single audio file.
 
-### 4.5 Qualitative snapshot
+The overlap–add process ensures that the model can handle longer audio files while maintaining the quality of the denoised output. The 50% overlap helps to reduce artifacts at the segment boundaries, and the Hann window smooths the transitions between segments.
+
+
+
+### 4.6 Qualitative snapshot
 
 After every third epoch the same validation utterance is monitored:
 
@@ -356,7 +367,7 @@ play denoise → "den_demo_e6.wav"
 
 The hiss is largely removed while high‑frequency consonants (sibilants) survive, though slight musical artefacts remain at very low SNRs.
 
-### 4.6 Single‑sample validation script
+### 4.7 Single‑sample validation script
 
 Directory: **`part4-second-update-files/single-sample-validation/`**
 
@@ -384,7 +395,7 @@ python denoise_audio.py --model model_2s_10_epoch.pth --params model_2s_10_epoch
 ```
 
 
-### 4.7 Reflection & next steps
+### 4.8 Reflection & next steps
 
 * **Generalisation gap:** training PESQ is ≈ 0.25 higher than validation – mild over‑fit.  We’ll add SpecAugment (random frequency masks) and MixOut regularisation.
 * **Phase limitations:** current model predicts magnitude only.  Re‑training with a complex ratio mask should improve high‑frequency detail and remove musical noise.
