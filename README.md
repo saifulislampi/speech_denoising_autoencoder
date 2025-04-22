@@ -327,7 +327,9 @@ Here are some details of the mixing process:
 | **Val**   | `2.22` | `0.92` | `16.90` |
 | **Test**  | `2.20` | `0.92` | `16.71` |
 
-These metrics are used to evaluate the performance of the denoising model:
+
+**Justification of the Evalulation Method:** Since this is not a classification task, we cannot use accuracy as a metric. Instead, we use three metrics that are commonly used in speech denoising tasks: PESQ-WB, STOI, and SI-SDR.
+These metrics are widely accepted in the field of speech processing and have been shown to correlate well with human perception of speech quality and intelligibility.
 
 - PESQ‑WB – perceptual speech quality; correlates with MOS, suitable for denoising.
 
@@ -395,14 +397,18 @@ python denoise_audio.py --model model_2s_10_epoch.pth --params model_2s_10_epoch
 ```
 
 
-### 4.8 Reflection & next steps
+### 4.8 Observations & Next Steps
+**Todos: Elaborate**
+- Perceptual quality: PESQ is 2.20 (WB) on the test set, which is a good score for speech denoising. However, we can still improve it further by fine-tuning the model and exploring different architectures.
+- **Generalisation:** The training PESQ is slightly higher than the test PESQ, but not significantly. This indicates that the model is not overfitting too much and is able to generalize well to unseen data.
+- SI-SDR is 16.71 dB on the test set, which is a good score for speech denoising. 
+- **STOI is 0.92**, which indicates that the model is able to preserve the intelligibility of the speech signal.
+- **Qualitative results:** The denoised audio sounds much clearer and less noisy than the original noisy audio. But the audio quality and details has dropped. That is also aparent in the waveform and spectrogram plots.
 
-* **Generalisation gap:** training PESQ is ≈ 0.25 higher than validation – mild over‑fit.  We’ll add SpecAugment (random frequency masks) and MixOut regularisation.
-* **Phase limitations:** current model predicts magnitude only.  Re‑training with a complex ratio mask should improve high‑frequency detail and remove musical noise.
-* **Data:** collect another 2 h of street‑corner recordings to widen RealMix.
-* **Metrics:** enlist DNS‑MOS in the final report for a MOS proxy.
+**Limitations:**
+- All test and validation data is created by noise mixed with clean speech. We need to test on real-world recordings to ensure the model generalizes well to unseen data. 
 
+Improvements Ideas:
+- We already created a pipleline to mix real-world noise with clean speech. We can use this to create a larger dataset of mixed audio files. We just need to record some more noise samples.
 ---
-
-*Placeholder values `TBD` will be replaced after final fine‑tune run.*
 
