@@ -214,7 +214,7 @@ Here is the [notebook](part3-first-update-files/audio_denoising_poc_1.ipynb) for
 **Notes on LLM Usage:** I used chatgpt for brainstorming and refining my ideas. And I used copilot autocomplete for fixing grammar and sentence structure in this document.
 
 
-## Part 4: Second Update
+## Part 4: Second Update
 
 ### 4.1 What’s new since Part 3 (First Udpate)
 
