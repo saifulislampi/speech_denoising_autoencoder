@@ -247,14 +247,6 @@ Here is a summary of the U-Net architecture used in this project:
 
 - **Output head:** Conv (32→1) + Sigmoid ⇒ denoised log‑mag (0‑1).
 
-- **Key design choices**
-
-    - Time‑axis pooling preserves spectral resolution.
-
-    - Skip connections inject fine detail & stabilise gradients.
-
-    - All ops keep receptive field wide in T, narrow in F – matching speech‑noise characteristics.
-
 ![U‑Net architecture](figures/unet.png)
 
 The U-Net architecture is designed to effectively capture both local and global features of the input audio signal, allowing for better denoising performance. The encoder path compresses the input signal into a lower-dimensional representation, while the decoder path reconstructs the output signal using skip connections to retain important details.
