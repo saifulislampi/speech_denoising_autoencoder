@@ -216,12 +216,11 @@ Here is the [notebook](part3-first-update-files/audio_denoising_poc_1.ipynb) for
 
 ## Part 4: Second Update
 
-
 ### 4.1 What’s new since Part 3 (First Udpate)
 
 | Area | Part 3 status | Part 4 upgrade |
 |------|---------------|----------------|
-| **Noise domain** | Synthetic HF hiss only | Added *RealMix* set (road + exhaust‐fan recordings) mixed at 0–15 dB SNR; dataset now  ➔ **N ≈ ✱✱k** 2‑second segments. |
+| **Noise domain** | 8455 segments of synthetic HF hiss only | Added *RealMix* set (road + exhaust‐fan recordings) mixed at 0–15 dB SNR; dataset now  ➔ 16910 pairs of 2‑second segments. |
 | **Training regime** | 10 epochs, LR 1e‑4 | fine‑tune the model from first update for 80 epochs |
 | **Validation strategy** | Hand‑picked clip | 70 / 15 / 15 stratified *train/val/test* split driven by manifest (see `segment_manifest.csv`). |
 | **Inference window** | Fixed 2s | Added **overlap–add** (50 % Hann) to denoise arbitrarily long audio. |
