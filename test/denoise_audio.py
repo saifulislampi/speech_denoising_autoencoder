@@ -128,13 +128,18 @@ def compute_snr(clean, denoised):
     noise = clean - denoised
     return 10 * np.log10(np.mean(clean**2) / (np.mean(noise**2) + 1e-10))
 
+def convert_to_16khz_wav(input_path, output_path):
+    y, sr = librosa.load(input_path, sr=16000)
+    sf.write(output_path, y, sr)
+    print(f"✓ Converted {input_path} to {output_path} at 16kHz")
+
 def main():
-    parser = argparse.ArgumentParser(description="Denoise long audio files with SimpleUNet")
-    parser.add_argument("noisy_audio", type=str, help="Path to noisy input audio (.flac/.wav)")
-    parser.add_argument("--clean_audio", type=str, default=None, help="Path to clean reference audio")
-    parser.add_argument("--output", type=str, default="denoised_output.wav", help="Output path")
-    parser.add_argument("--model", type=str, default="model_2s_10_epoch.pth", help="Model file path")
-    parser.add_argument("--params", type=str, default="model_2s_10_epoch_params.json", help="Params file path")
+    parser = argparse.ArgumentParser(description="Denoise long audio files with DesnoingUNet Autoencoder")
+    parser.add_argument("-i", "--noisy-audio", type=str, required=True, help="Path to noisy input audio (.flac/.wav)")
+    # parser.add_argument("-r", "--clean-audio", type=str, default=None, help="Path to clean reference audio")
+    parser.add_argument("-o", "--output", type=str, default="denoised_output.wav", help="Output path")
+    parser.add_argument("-m", "--model", type=str, default="model_2s_10_epoch.pth", help="Model file path")
+    parser.add_argument("-p", "--params", type=str, default="model_2s_10_epoch_params.json", help="Params file path")
     parser.add_argument("--overlap", type=float, default=0.5, help="Overlap ratio between segments")
     args = parser.parse_args()
 
@@ -147,20 +152,10 @@ def main():
         out_path=args.output,
         overlap=args.overlap
     )
+    
+    convert_to_16khz_wav(args.noisy_audio, args.noisy_audio.replace(".flac", "_16k.wav"))
 
     print(f"✓ Denoised audio saved to '{args.output}' at sample rate {sr}")
-
-    if args.clean_audio:
-        clean_audio, _ = librosa.load(args.clean_audio, sr=sr)
-        min_len = min(len(clean_audio), len(denoised_audio))
-        clean_audio, denoised_audio = clean_audio[:min_len], denoised_audio[:min_len]
-
-        snr_value = compute_snr(clean_audio, denoised_audio)
-        pesq_value = pesq(sr, clean_audio, denoised_audio, 'wb')
-
-        print("\nEvaluation Metrics:")
-        print(f"SNR:  {snr_value:.2f} dB")
-        print(f"PESQ: {pesq_value:.2f}")
-
+ 
 if __name__ == "__main__":
     main()
