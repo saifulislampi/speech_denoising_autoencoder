@@ -1,0 +1,23 @@
+digraph DenoisingUNet {
+  rankdir=TD;
+  node [shape=record, fontname="Helvetica"];
+
+  // --- Nodes with fill colors ---
+  Input       [label="{Input|1×257×251}",            style=filled, fillcolor=white];
+  Enc1        [label="{Enc1|Conv(1→32,3×3)+LReLU|Conv(32→32,3×3)+LReLU|32×257×251}", style=filled, fillcolor=lightblue];
+  Pool1       [label="{Pool1|MaxPool(1×2)|32×257×125}", style=filled, fillcolor=azure];
+  Enc2        [label="{Enc2|Conv(32→64,3×3)+LReLU|Conv(64→64,3×3)+LReLU|64×257×125}", style=filled, fillcolor=lightblue];
+  Pool2       [label="{Pool2|MaxPool(1×2)|64×257×62}",  style=filled, fillcolor=azure];
+  Bottleneck  [label="{Bottleneck|Conv(64→128,3×3)+LReLU|Conv(128→128,3×3)+LReLU|128×257×62}", style=filled, fillcolor=lightgray];
+  Up2         [label="{Up2|Conv(128→64,1×1)|64×257×62}", style=filled, fillcolor=lightgreen];
+  Dec2        [label="{Dec2|Conv(128→64,3×3)+LReLU|Conv(64→64,3×3)+LReLU|64×257×125}", style=filled, fillcolor=lightgreen];
+  Up1         [label="{Up1|Conv(64→32,1×1)|32×257×125}", style=filled, fillcolor=lightgreen];
+  Dec1        [label="{Dec1|Conv(64→32,3×3)+LReLU|Conv(32→32,3×3)+LReLU|Conv(32→1,1×1)+Sigmoid|1×257×251}", style=filled, fillcolor=lightyellow];
+
+  // --- Main flow ---
+  Input -> Enc1 -> Pool1 -> Enc2 -> Pool2 -> Bottleneck -> Up2 -> Dec2 -> Up1 -> Dec1;
+
+  // --- Skip connections (dashed red arrows) ---
+  Enc2 -> Dec2 [style="dashed", color=red, arrowhead=vee];
+  Enc1 -> Dec1 [style="dashed", color=red, arrowhead=vee];
+}
