@@ -1,5 +1,11 @@
 # Speech Signal Denoising: Reducing High-Frequency Noise with Autoencoders
 
+## Jump To:
+- [Part 1: Conceptual Design](#part-1-conceptual-design)
+- [Part 2: Dataset](#part-2-dataset)
+- [Part 3: First Update](#part-3-first-update)
+- [Part 4: Second Update](#part-4-second-update)
+
 
 ## Part 1: Conceptual Design
 
@@ -348,11 +354,6 @@ First, lets look at the waveform of the three audio files, clean at the top, noi
 
 And here is the spectrogram of the same audio files. The denoised audio has a much clearer spectrogram, with less noise present in the high-frequency range.
 ![spectrogram](figures/spectrogram.png)
-
-
-
-
-
 
 ### 4.6 Denoising Longer Audio
 The model is trained on 2‑s segments, but we want to denoise longer audio files. To achieve this, we use an overlap–add strategy with a 50% overlap and a Hann window.
