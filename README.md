@@ -1,10 +1,22 @@
 # Speech Signal Denoising: Reducing High-Frequency Noise with Autoencoders
 
-## Jump To:
+## Overview 
+This document evolved  as we progressed through the project. Part 1 outlines the conceptual design, including the problem statement, proposed solution, and dataset requirements. Part 2 describes the dataset used for training and evaluation. Part 3 details the first update, including the architecture, training process, and challenges encountered. Part 4 presents the second update, including improvements made to the model and results obtained.
+
+Here are the main sections of the document:
 - [Part 1: Conceptual Design](#part-1-conceptual-design)
 - [Part 2: Dataset](#part-2-dataset)
 - [Part 3: First Update](#part-3-first-update)
 - [Part 4: Second Update](#part-4-second-update)
+
+As we progressed through the project, we added new sections to the document to reflect our evolving understanding and approach. But the previous sections kept their original content. That is why, we will see our implementation in part 3, and part 4 does not exactly match what we wrote in part 1. For example, we planned to use 100hour LibriSpeech dataset, we ended up using only the test-clean dataset to create our training and validation data, because we found that the test-clean dataset is already large enough to train our model. We just needed to add more diverse noise samples to the dataset.
+
+Here is an overview of the directory structure:
+- `src/`: Contains the source code for part 3 and part 4.
+- `test/`: Contains the a script to denoise audio files using the trained model, and the trained models and parameters.
+- `sample-data/`: Contains sample audio files used for testing and evaluation.
+- `figures/`: Contains figures and plots used in the document.
+- `README.md`: This document.
 
 
 ## Part 1: Conceptual Design
@@ -209,7 +221,7 @@ We want to test on “unknown” audio , potentially from real-world recordings 
 If the audio is longer than 2 seconds, we can split it (like we do in training) into multiple 2s segments, denoise each, then concatenate results.
 
 #### Code
-Here is the [notebook](part3-first-update-files/audio_denoising_poc_1.ipynb) for part3. It has all the code and results discussed above.
+Here is the [notebook](src/part3-first-update-files/audio_denoising_poc_1.ipynb) for part3. It has all the code and results discussed above.
 
 **Notes on LLM Usage:** I used chatgpt for brainstorming and refining my ideas. And I used copilot autocomplete for fixing grammar and sentence structure in this document.
 
@@ -279,7 +291,7 @@ Here are some details of the mixing process:
 
 - Idempotent: skip files that already exist to allow incremental runs.
 
- **Code:** The code is available in [part4-second-update-files/data_pre_processing.ipynb](part4-second-update-files/data_pre_processing.ipynb)
+ **Code:** The code is available in [src/part4-second-update-files/data_pre_processing.ipynb](src/part4-second-update-files/data_pre_processing.ipynb)
 
 ### 4.3 Fine‑tuning details
 
@@ -430,5 +442,12 @@ options:
 
 Improvements Ideas:
 - We already created a pipleline to mix real-world noise with clean speech. We can use this to create a larger dataset of mixed audio files. We just need to record some more noise samples.
----
+
+### Source Code and Artifacts
+The source code for part 4 is available in the `src/part4-second-update-files` directory. The main files of interest are:
+- `data_pre_processing.ipynb`: This notebook contains the code for creating the RealMix dataset by mixing clean speech with real-world noise recordings.
+- `speech_denoising_autoencoder_update_2.ipynb`: This notebook contains the code for fine-tuning and evaluating the U-Net autoencoder model on the RealMix dataset.
+- `segment_manifest.csv`: This file contains the manifest of the mixed dataset, including the paths to the clean and noisy audio files.
+
+The `test` directory contains the `denoise_audio.py` script that can be used to denoise audio files using the trained model. The `models` folder contains the trained models and parameters. The required dependencies are listed in the `environment.yaml` file.
 
