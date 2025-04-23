@@ -259,9 +259,13 @@ Here is a summary of the U-Net architecture used in this project:
 
 - **Output head:** Conv (32→1) + Sigmoid ⇒ denoised log‑mag (0‑1).
 
+Here is a diagram of the U-Net architecture:
+
 ![U‑Net architecture](figures/unet.png)
 
-The U-Net architecture is designed to effectively capture both local and global features of the input audio signal, allowing for better denoising performance. The encoder path compresses the input signal into a lower-dimensional representation, while the decoder path reconstructs the output signal using skip connections to retain important details.
+The red arrows indicate the skip connections that concatenate feature maps from the encoder path to the decoder path. This allows the model to retain important details from the input signal while reconstructing the output.
+
+The encoder path compresses the input signal into a lower-dimensional representation, while the decoder path reconstructs the output signal using skip connections to retain important details.
 
 The model is trained to minimize a hybrid loss function that combines both magnitude and waveform losses, ensuring that the denoised output closely resembles the clean target signal. The use of LeakyReLU activations helps to mitigate the vanishing gradient problem, allowing for better training convergence.
 
@@ -429,19 +433,28 @@ options:
   --overlap OVERLAP     Overlap ratio between segments
   ````
   
-### 4.8 Observations & Next Steps
-**Todos: Elaborate**
-- Perceptual quality: PESQ is 2.20 (WB) on the test set, which is a good score for speech denoising. However, we can still improve it further by fine-tuning the model and exploring different architectures.
-- **Generalisation:** The training PESQ is slightly higher than the test PESQ, but not significantly. This indicates that the model is not overfitting too much and is able to generalize well to unseen data.
-- SI-SDR is 16.71 dB on the test set, which is a good score for speech denoising. 
-- **STOI is 0.92**, which indicates that the model is able to preserve the intelligibility of the speech signal.
-- **Qualitative results:** The denoised audio sounds much clearer and less noisy than the original noisy audio. But the audio quality and details has dropped. That is also aparent in the waveform and spectrogram plots.
+### 4.8 Commentary/Observations & Next Steps
 
-**Limitations:**
-- All test and validation data is created by noise mixed with clean speech. We need to test on real-world recordings to ensure the model generalizes well to unseen data. 
+Here are some observations and next steps based on the results obtained so far:
 
-Improvements Ideas:
+- **Model Generalization:** The model is able to generalize well to unseen data, as indicated by the test evaluation metrics on the test set. All three metrics (PESQ, STOI, and SI-SDR) have very similar values across the train, validation, and test sets. The training PESQ is slightly higher than the test PESQ, but not significantly. This indicates that the model is not overfitting too much and is able to generalize well to unseen data.
+
+- **Perceptual Quality:** PESQ is 2.20 (WB) on the test set, which is a good score for speech denoising. However, we can still improve it further by fine-tuning the model and exploring different architectures.
+
+- **Intelligibility:** The model is able to preserve the intelligibility of the speech signal, as indicated by the STOI score of 0.92 on the test set. This means that the model is able to remove most of the high-frequency noise while preserving the intelligibility of the speech signal.
+
+- **Signal Fidelity:** The SI-SDR score of 16.71 dB on the test set indicates that the model is able to remove most of the high-frequency noise while preserving the signal fidelity. This is a good score for speech denoising.
+
+- **Qualitative Results:** The denoised audio sounds much clearer and less noisy than the original noisy audio. But there is still some distortion or muffling present in the denoised audio. This is expected, as the model is still in the early stages of training and can be improved further.
+
+**Threats to Validity:**
+- The model is trained on synthetic noise and a small set of real-world noise recordings. While the model performs well on the test set, it may not generalize well to other types of noise or real-world recordings. We need to test the model on a larger and more diverse set of real-world recordings to ensure that it can handle different types of noise.
+
+- The model is trained on a small set of clean speech recordings. While the model performs well on the test set, it may not generalize well to other speakers or accents. We need to test the model on a larger and more diverse set of clean speech recordings to ensure that it can handle different speakers and accents.
+
+**Improvement in Next Steps:**
 - We already created a pipleline to mix real-world noise with clean speech. We can use this to create a larger dataset of mixed audio files. We just need to record some more noise samples.
+- We will finetune the model on noise recorded with my phone and test with noisy speech samples recorded with my phone. This will help us to evaluate the model on real-world recordings and see how well it generalizes to different types of noise.
 
 ### Source Code and Artifacts
 The source code for part 4 is available in the `src/part4-second-update-files` directory. The main files of interest are:
