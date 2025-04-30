@@ -1,13 +1,14 @@
 # Speech Signal Denoising: Reducing High-Frequency Noise with Autoencoders
 
 ## Overview 
-This document evolved  as we progressed through the project. Part 1 outlines the conceptual design, including the problem statement, proposed solution, and dataset requirements. Part 2 describes the dataset used for training and evaluation. Part 3 details the first update, including the architecture, training process, and challenges encountered. Part 4 presents the second update, including improvements made to the model and results obtained.
+This document evolved  as we progressed through the project. Part 1 outlines the conceptual design, including the problem statement, proposed solution, and dataset requirements. Part 2 describes the dataset used for training and evaluation. Part 3 details the first update, including the architecture, training process, and challenges encountered. Part 4 presents the second update, including improvements made to the model and results obtained. In Part 5, we evaluate our model on unseen test data and real-world recordings.
 
 Here are the main sections of the document:
 - [Part 1: Conceptual Design](#part-1-conceptual-design)
 - [Part 2: Dataset](#part-2-dataset)
 - [Part 3: First Update](#part-3-first-update)
 - [Part 4: Second Update](#part-4-second-update)
+- [Part 5: Final Update](#part-5-final-update)
 
 As we progressed through the project, we added new sections to the document to reflect our evolving understanding and approach. But the previous sections kept their original content. That is why, we will see our implementation in part 3, and part 4 does not exactly match what we wrote in part 1. For example, we planned to use 100hour LibriSpeech dataset, we ended up using only the test-clean dataset to create our training and validation data, because we found that the test-clean dataset is already large enough to train our model. We just needed to add more diverse noise samples to the dataset.
 
@@ -463,4 +464,64 @@ The source code for part 4 is available in the `src/part4-second-update-files` d
 - `segment_manifest.csv`: This file contains the manifest of the mixed dataset, including the paths to the clean and noisy audio files.
 
 The `test` directory contains the `denoise_audio.py` script that can be used to denoise audio files using the trained model. The `models` folder contains the trained models and parameters. The required dependencies are listed in the `environment.yaml` file.
+
+
+## Part 5: Final Update
+
+### 5.1 What’s new since Part 4 (Second Udpate)
+- Further fine-tuning of the model on the RealMix dataset with additional noise samples.
+- Evaluation of the final model on unseen test data and real-world recordings.
+
+### 5.2 Architecture Recap
+The architecture of the U-Net autoencoder remains the same as described in Part 4. The model is trained to minimize a hybrid loss function that combines both magnitude and waveform losses, ensuring that the denoised output closely resembles the clean target signal. The use of LeakyReLU activations helps to mitigate the vanishing gradient problem, allowing for better training convergence.
+
+The model is trained on 2-s segments of audio, and the overlap–add strategy is used to denoise longer audio files. The model is able to generalize well to unseen data, as indicated by the test evaluation metrics on the test set. The training PESQ is slightly higher than the test PESQ, but not significantly. This indicates that the model is not overfitting too much and is able to generalize well to unseen data.
+
+See [4.2](#42-current-network-architecture) for more details on the architecture.
+
+### 5.3 Training Dataset Recap
+We initially planned to use the LibriSpeech `train-clean-100` dataset, but we found that the test-clean dataset is already large enough to train our model. We just needed to add more diverse noise samples to the dataset. 
+We used the LibriSpeech `test-clean` dataset to create our training and validation data. 
+
+LibriSpeech `test-clean` dataset contains 2620 audio samples. We used 4 real-world noise recording from my phone to create 2620 noisy audio samples. We mixed the clean audio samples with the noise recordings at different SNR levels (0, 5, 10, 15 dB). This resulted in a total of 2620 clean audio samples and 2620 noisy audio samples.
+
+We then created two seconds segments of the audio samples. This resulted in a total of 16910 clean audio segments and 16910 noisy audio segments. We created a manifest file `segment_manifest.csv` that contains the paths to the clean and noisy audio files. We created a stratified split of the dataset into 70% training, 15% validation, and 15% test sets. The training set contains 11836 segments, the validation set contains 2536 segments, and the test set contains 2538 segments.
+
+This training set was used to fin-tune our baseline model. The baseline model was trained on 8455 segments of synthetic high-frequency noise only. The training set was then augmented with real-world noise recordings to create the RealMix dataset.
+
+The code for creating the training dataset is available in the `src/part4-second-update-files/data_pre_processing.ipynb` notebook. The manifest file `segment_manifest.csv` is also included in the `src/part4-second-update-files` directory.
+
+### 5.4 Description of Test Dataset (Unseen Data)
+Even though in our fine-tuning step we used a stratified split of the dataset into training, validation, and test sets, our baseline model was trained a dataset created from the entire `test-clean` dataset. In fine-tuning step, we used different noise samples, but the clean audio samples were the same. So, model have already seen the clean audio samples in the training step. For this reason, to evaluate generalization to unseen data, we will use a different test dataset.
+
+We used LibriSpeech `dev-clean` dataset to create our final test dataset. The `dev-clean` dataset contains 2703 audio samples. We samples 273 audio samples from the `dev-clean` dataset. We used 4 real-world noise recording from my phone to create 237 noisy audio samples. We mixed the clean audio samples with the noise recordings at different SNR levels (0, 5, 10, 15 dB). Then we created two seconds segments of the audio samples. This resulted in a total of 913 clean audio segments and 913 noisy audio segments. We used this dataset to evaluate the final model.
+
+
+### 5.5 Evaluation of the Final Model on Unseen Test Data
+In our fine-tuning step, we used PESQ-WB, STOI, and SI-SDR as our evaluation metrics.  Since this is not a classification task, we cannot use accuracy as a metric. PESQ-WB stands for Perceptual Evaluation of Speech Quality (Wideband), which is a widely used metric for evaluating the quality of speech signals. STOI stands for Short-Time Objective Intelligibility, which measures the intelligibility of speech signals. SI-SDR stands for Scale-Invariant Signal-to-Distortion Ratio, which measures the distortion in the output signal. We used the same metrics to evaluate the final model on the unseen test data.
+
+For our final test dataset, we got the following results:
+- **PESQ-WB:** 1.91
+- **STOI:** 0.87
+- **SI-SDR:** 13.59 dB
+
+In comparison, we got the following results on the training and validation and previous test datasets:
+| Split | PESQ‑WB ↑ | STOI ↑ | SI‑SDR [dB] ↑ |
+|-------|-----------|--------|---------------|
+| **Train** | `2.22` | `0.92` | `16.83` |
+| **Val**   | `2.22` | `0.92` | `16.90` |
+| **Test**  | `2.20` | `0.92` | `16.71` |
+
+The results on the unseen test dataset are lower than the results on the training and validation datasets. In the next section, we will discuss the reasons for this and how we can improve the model further.
+
+### 5.6 Real-World Noisy Sample Evaluation
+
+
+### 5.7 Observation from Unseen Data Evaluation
+
+
+### 5.8 Running the Trained Model on Noisy Samples
+
+
+### Source Code and Artifacts
 
