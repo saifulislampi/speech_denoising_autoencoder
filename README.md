@@ -512,16 +512,62 @@ In comparison, we got the following results on the training and validation and p
 | **Val**   | `2.22` | `0.92` | `16.90` |
 | **Test**  | `2.20` | `0.92` | `16.71` |
 
-The results on the unseen test dataset are lower than the results on the training and validation datasets. In the next section, we will discuss the reasons for this and how we can improve the model further.
+In the next section, we will discuss the reasons for this and how we can improve the model further.
 
-### 5.6 Real-World Noisy Sample Evaluation
+### 5.6 Observation from Unseen Data Evaluation
+Lets first understand the results we got on the unseen test data. The PESQ-WB score of 1.91 indicates that the model is able to remove some of the high-frequency noise present in the noisy audio, but there is still some distortion or muffling present in the denoised audio. But the STOI score of 0.87 signifies a relatively high degree of speech intelligibility.  An STOI score of 0.87 suggests that the denoised speech remains largely understandable, with listeners likely able to discern the spoken words and their meaning. 
 
+In essence, while the STOI score indicates that the model effectively preserves the content of the speech, the PESQ-WB score reveals that the overall listening experience is compromised. The model manages to remove enough noise for the words to be understood, but it introduces or fails to eliminate other distortions that detract from the perceived naturalness and clarity of the speech.
 
-### 5.7 Observation from Unseen Data Evaluation
+The SI-SDR of 13.59 dB confirms that the model is indeed reducing the overall level of noise and distortion. However, the perceptual quality, as captured by PESQ-WB, is not on par with this reduction. This suggests that the model's distortion reduction is not always aligned with what humans perceive as high-quality audio.
+
+The qualitative results also support this. The denoised audio sounds much clearer and less noisy than the original noisy audio. But there is still some distortion or muffling present in the denoised audio. This is expected, as the model is still in the early stages of training and can be improved further. Here are three audio files: clean, noisy, and denoised. The clean audio is the original recording, while the noisy audio has high-frequency noise added. The denoised audio is the output of our trained model.
+
+- [Clean Sample](sample-data/clean/part5-clean-sample-1.wav)
+- [Noisy Sample](sample-data/noisy/part5-noisy-sample-1.wav)
+- [Denoised Sample](sample-data/denoised/part5-denoised-sample-1.wav)
+
+Here is the waveform of these three audio files, clean at the top, noisy in the middle, and denoised at the bottom. We can see that mdoel is able to remove most of the high-frequency noise present in the noisy audio. 
+
+![waveform](figures/part5-eval-1.png)
+
+Now that we understand the results we got on the unseen test data, lets compare it with the results we got on the training and validation datasets. In all three matrics, the scores are  higher than the scores we got on the unseen test data. This indicates that the model is probably overfitting to the training data. The model is able to learn the patterns in the training data, but it is not able to generalize well to unseen data. 
+
+Here are some possible reasons for this:
+- **Limited diversity in Speaker Voice:** Our training dataset is created from the LibriSpeech `test-clean` dataset, which contains a limited number of speakers. The model may not be able to generalize well to unseen speakers or accents. We need to test the model on a larger and more diverse set of clean speech recordings to ensure that it can handle different speakers and accents.
+- **Limited diversity in Noise Samples:** The model is trained on a limited set of noise samples. We need to test the model on a larger and more diverse set of noise recordings to ensure that it can handle different types of noise.
+- **Limited training data:** Although we thought that the `test-clean` dataset is large enough to train our model, it is still a small dataset compared to the `train-clean-100` dataset. We need to train the model on a larger dataset to ensure that it can generalize well to unseen data.
+
+### 5.7 Real-World Noisy Sample Evaluation
+We also evaluated the model on real-world noisy samples. We recorded some speech audio samples with my phone in a noisy environment. We then denoised the audio samples using the trained model. Since we do not have the clean audio samples, we cannot evaluate the model using PESQ-WB, STOI, and SI-SDR metrics. But we can look at the waveform and spectrogram of the denoised audio samples to see how well the model is able to remove the high-frequency noise.
+
+**todo: add audio samples and figures**
 
 
 ### 5.8 Running the Trained Model on Noisy Samples
+The `test` folder contains a script `denoise_audio.py` that can be used to denoise audio files using the trained model. The `test/models` folder contains the trained models and parameters. The required dependencies are listed in the `environment.yaml` file.
+To get started with the denoising script, change to the `test` directory. Then create a conda environment using the provided `environment.yaml` file:
 
+```bash
+conda env create -f environment.yaml
+```
+
+Then activate the environment:
+```bash
+conda activate audio_denoising_eval
+``` 
+Then run the denoising script using the following command:
+
+```bash
+python denoise_audio.py \
+-i noisy_sample/noisy-sample-1-syn-noise.wav \
+-o denoise_output.wav \
+-m models/best_finetuned_model.pth \
+-p models/best_finetuned_model_params.json             
+```
+Section 4.7 has more details on how to run the denoising script.
 
 ### Source Code and Artifacts
+The source code for part 5 is available in the `src/part5-final-update` directory. 
+todo: add file names
 
