@@ -1,0 +1,8 @@
+{
+  "global_min": 0.0,
+  "global_max": 5.408329963684082,
+  "sr": 16000,
+  "n_fft": 512,
+  "hop_length": 128,
+  "win_length": 512
+}
