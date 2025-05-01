@@ -337,6 +337,17 @@ Here are some details of the mixing process:
 | **Test**  | `2.20` | `0.92` | `16.71` |
 
 
+#### What do the numbers mean?
+
+| Metric      | Scale      | Poor          | Acceptable   | Very good   | Excellent | Quick note |
+|-------------|-----------|---------------|--------------|-------------|-----------|------------|
+| **PESQ-WB** | 1.0–4.5   | < 2.0         | 2.4 – 2.8    | 3.3 – 3.8   | ≥ 3.8     | Maps to MOS listening scores (ITU-T) |
+| **STOI**    | 0–1       | < 0.50        | 0.60 – 0.75  | 0.75 – 0.90 | ≥ 0.90    | 0.75 ≈ “good intelligibility” |
+| **SI-SNR**† | −∞–+∞ dB  | 0 dB          | 10 dB        | 15 dB       | ≥ 20 dB   | +5 dB is audible; +10 dB is strong |
+
+† Zero-mean, scale-invariant variant (often called SI-SNR or “zero-mean SI-SDR”).
+
+
 **Justification of the Evalulation Method:** Since this is not a classification task, we cannot use accuracy as a metric. Instead, we use three metrics that are commonly used in speech denoising tasks: PESQ-WB, STOI, and SI-SNR(zero-mean variant).
 These metrics are widely accepted in the field of speech processing and have been shown to correlate well with human perception of speech quality and intelligibility.
 
@@ -347,6 +358,7 @@ These metrics are widely accepted in the field of speech processing and have bee
 - SI-SNR – scale-invariant signal-to-noise ratio. We zero-mean both reference and estimate (TasNet convention) before the projection step, so values are numerically identical to the “zero-mean SI-SDR” often reported in recent separation papers. In our notebok, we named it SI-SDR. We will refer it as SI-SNR in this document.
 
 Together they capture quality, intelligibility and signal fidelity – a balanced trio for this task.
+
 
 ### 4.5 Qualitative snapshot
 Here is a qualitative snapshot of the denoising performance on a sample audio clip. 
@@ -511,25 +523,48 @@ In comparison, we got the following results on the training and validation and p
 | **Val**   | `2.22` | `0.92` | `16.90` |
 | **Test**  | `2.20` | `0.92` | `16.71` |
 
-In the next section, we will discuss the reasons for this and how we can improve the model further.
+
+#### What do the numbers mean?
+
+| Metric      | Scale      | Poor          | Acceptable   | Very good   | Excellent | Quick note |
+|-------------|-----------|---------------|--------------|-------------|-----------|------------|
+| **PESQ-WB** | 1.0–4.5   | < 2.0         | 2.4 – 2.8    | 3.3 – 3.8   | ≥ 3.8     | Maps to MOS listening scores (ITU-T) |
+| **STOI**    | 0–1       | < 0.50        | 0.60 – 0.75  | 0.75 – 0.90 | ≥ 0.90    | 0.75 ≈ “good intelligibility” |
+| **SI-SNR**† | −∞–+∞ dB  | 0 dB          | 10 dB        | 15 dB       | ≥ 20 dB   | +5 dB is audible; +10 dB is strong |
+
+In the next section, we will discuss the our observation for this and how we can improve the model further.
+
 
 ### 5.6 Observation from Unseen Data Evaluation
-Lets first understand the results we got on the unseen test data. The PESQ-WB score of 1.91 indicates that the model is able to remove some of the high-frequency noise present in the noisy audio, but there is still some distortion or muffling present in the denoised audio. But the STOI score of 0.87 signifies a relatively high degree of speech intelligibility.  An STOI score of 0.87 suggests that the denoised speech remains largely understandable, with listeners likely able to discern the spoken words and their meaning. 
 
-In essence, while the STOI score indicates that the model effectively preserves the content of the speech, the PESQ-WB score reveals that the overall listening experience is compromised. The model manages to remove enough noise for the words to be understood, but it introduces or fails to eliminate other distortions that detract from the perceived naturalness and clarity of the speech.
+| Metric | Our score | Where it falls on the legend | Take-away |
+|--------|-----------|------------------------------|-----------|
+| **PESQ-WB** | **1.91** | Just below *2.0 → Acceptable* | Audible hiss / slight muffling still present. |
+| **STOI** | **0.87** | *0.75 – 0.90 → Very good* | Speech remains easy to understand. |
+| **SI-SNR** | **13.6 dB** | Mid-way between *10 dB Acceptable* and *15 dB Very good* | Residual noise ≈ 1⁄23 of speech power—noticeably cleaner, not yet pristine. |
 
-The SI-SNR of 13.59 dB confirms that the model is indeed reducing the overall level of noise and distortion. However, the perceptual quality, as captured by PESQ-WB, is not on par with this reduction. This suggests that the model's distortion reduction is not always aligned with what humans perceive as high-quality audio.
+#### What this means
+- **Intelligibility is solid** – STOI stays in the very-good band, so words are rarely missed even with unseen speakers and phone-recorded noise.
 
-The qualitative results also support this. The denoised audio sounds much clearer and less noisy than the original noisy audio. But there is still some distortion or muffling present in the denoised audio. This is expected, as the model is still in the early stages of training and can be improved further. Here are three audio files: clean, noisy, and denoised. The clean audio is the original recording, while the noisy audio has high-frequency noise added. The denoised audio is the output of our trained model.
+- **Perceptual quality takes the hit** – PESQ drops below the 2.0 “acceptable” cut-off, matching our informal impression of a slight “sandy” texture in the denoised audio.
+
+- **Noise suppression is decent but not stellar** – 13 dB SI-SNR means speech energy is an order of magnitude stronger than the residual; however, we lost about 3 dB relative to the in-domain test set, confirming a domain-shift penalty.
+
+#### Qualitative Check
+
+Listen to the paired clip and inspect the waveform in the figure below. 
 
 - [Clean Sample](sample-data/clean/part5-clean-sample-1.wav)
 - [Noisy Sample](sample-data/noisy/part5-noisy-sample-1.wav)
 - [Denoised Sample](sample-data/denoised/part5-denoised-sample-1.wav)
 
-Here is the waveform of these three audio files, clean at the top, noisy in the middle, and denoised at the bottom. We can see that mdoel is able to remove most of the high-frequency noise present in the noisy audio. 
+Here is the waveform of these three audio files, clean at the top, noisy in the middle, and denoised at the bottom. 
 
 ![waveform](figures/part5-eval-1.png)
 
+The denoised audio sounds much clearer and less noisy than the original noisy audio. But there is still some distortion or muffling present in the denoised audio. The denoiser removes most of the broadband hiss but leaves a faint “sand-papery” texture when speech energy is low—consistent with the sub-2.0 PESQ score.
+
+#### Comparison with Training and Validation Datasets
 Now that we understand the results we got on the unseen test data, lets compare it with the results we got on the training and validation datasets. In all three matrics, the scores are  higher than the scores we got on the unseen test data. This indicates that the model is probably overfitting to the training data. The model is able to learn the patterns in the training data, but it is not able to generalize well to unseen data. 
 
 Here are some possible reasons for this:
@@ -538,10 +573,39 @@ Here are some possible reasons for this:
 - **Limited training data:** Although we thought that the `test-clean` dataset is large enough to train our model, it is still a small dataset compared to the `train-clean-100` dataset. We need to train the model on a larger dataset to ensure that it can generalize well to unseen data.
 
 ### 5.7 Real-World Noisy Sample Evaluation
-We also evaluated the model on real-world noisy samples. We recorded some speech audio samples with my phone in a noisy environment. We then denoised the audio samples using the trained model. Since we do not have the clean audio samples, we cannot evaluate the model using PESQ-WB, STOI, and SI-SNR metrics. But we can look at the waveform and spectrogram of the denoised audio samples to see how well the model is able to remove the high-frequency noise.
+We also evaluated the model on real-world noisy samples. We recorded some speech audio samples with my phone in various environments, including a busy street, in front of an exhaust fan, and in a quiet room. We then ran the denoising script on these samples to see how well the model performs in real-world scenarios. We do not have a clean version of these samples, so we cannot do quantitative evaluation. But we can do a qualitative evaluation by listening to the denoised audio samples and looking at the waveform.
 
-**todo: add audio samples and figures**
+#### Sample A – Exhaust-fan drone
 
+|Sample Type | Clip |
+|---|---|
+| Noisy input | [custom-audio-fan-noise-1.wav](sample-data/noisy/custom-audio-fan-noise-1.wav) |
+| Denoised | [custom-audio-fan-noise-1-denoised.wav](sample-data/denoised/custom-audio-fan-noise-1-denoised.wav) |
+
+
+Here is the waveform of these two audio files, noisy at the top, and denoised at the bottom.
+![waveform](figures/custom-audio-fan-noise.png)
+
+**Impression:** The denoised audio sounds much clearer and less noisy than the original noisy audio. The denoiser removes most of the high-frequency noise but sounds muffled in some parts. The denoised audio has a slight “sand-papery” texture, but it is much less pronounced than in the original noisy audio. The denoised audio is still intelligible, but it sounds slightly muffled during quiet vowels.
+
+#### Sample B – Busy street
+
+|Sample Type | Clip |
+|---|---|
+| Noisy input | [custom-audio-busy-road-1.wav](sample-data/noisy/custom-audio-busy-road-1.wav) |
+| Denoised | [custom-audio-busy-road-1-denoised.wav](sample-data/denoised/custom-audio-busy-road-1-denoised.wav) |
+
+Here is the waveform of these two audio files, noisy at the top, and denoised at the bottom.
+![waveform](figures/custom-audio-busy-road.png)
+
+**Impression:** The denoised audio sounds much clearer and less noisy than the original noisy audio. But the model copes better with the stationary fan noise than with rapidly changing traffic noise—consistent with its training mix.
+
+#### Take-aways
+- The denoiser generalises reasonably well to real recordings: most harsh HF content is stripped away and speech remains easy to follow.
+
+- Residual artefacts (mild muffling, faint hiss after transients) mirror the sub-2.0 PESQ we saw in Section 5.6.
+
+- Highly non-stationary noise (traffic) poses a bigger challenge than quasi-stationary noise (fan). Future data collection should emphasise dynamic urban soundscapes to close that gap.
 
 ### 5.8 Running the Trained Model on Noisy Samples
 The `test` folder contains a script `denoise_audio.py` that can be used to denoise audio files using the trained model. The `test/models` folder contains the trained models and parameters. The required dependencies are listed in the `environment.yaml` file.
@@ -567,6 +631,16 @@ python denoise_audio.py \
 Section 4.7 has more details on how to run the denoising script.
 
 ### Source Code and Artifacts
-The source code for part 5 is available in the `src/part5-final-update` directory. 
-todo: add file names
+The source code for part 5 is available in the `src/part5-final-update` directory. And the script to denoise audio files is available in the `test` directory. Here is a summary of the artifacts of interest:
 
+| Category | Path | Contents |
+|----------|------|----------|
+| **Notebooks (Part 5)** | `src/part5-final-update/speech_denoiser_fine_tuning_and_evaluation.ipynb` | Fine-tuning on **RealMix** and evaluation on the in-domain test split. |
+| | `src/part5-final-update/data_pre_processing.ipynb` | Scripts to build **RealMix** and the *unseen* phone-noise test set. |
+| | `src/part5-final-update/speech_denoising_eval.ipynb` | Evaluation of the final model on unseen data + real-world clips. |
+| **CLI utility** | `test/denoise_audio.py` | Command-line tool to denoise any `.wav/.flac` file. |
+| **Trained weights** | `test/models/final_model.pth` | Latest U-Net weights (≈ 80 epochs). |
+| | `test/models/final_model_params.json` | STFT + min–max constants required at inference. |
+| **Sample audio** | `sample-data/` |  All sample audio clean/noisy/denoised used in this document|
+| | `test/noisy_sample/` | Noisy samples used in § 5.6–5.7. to be used with denoising cli |
+| **Environment spec** | `test/environment.yaml` | Reproducible Conda environment for test run. |
