@@ -330,21 +330,21 @@ Here are some details of the mixing process:
 **Epochs:** Fine tuned for 20 epochs for first step, then 50 epochs for second step with increased patience and lower learning rate.
 
 ### 4.4 Objective quality
-| Split | PESQ‑WB ↑ | STOI ↑ | SI‑SDR [dB] ↑ |
+| Split | PESQ‑WB ↑ | STOI ↑ | SI‑SNR [dB] ↑ |
 |-------|-----------|--------|---------------|
 | **Train** | `2.22` | `0.92` | `16.83` |
 | **Val**   | `2.22` | `0.92` | `16.90` |
 | **Test**  | `2.20` | `0.92` | `16.71` |
 
 
-**Justification of the Evalulation Method:** Since this is not a classification task, we cannot use accuracy as a metric. Instead, we use three metrics that are commonly used in speech denoising tasks: PESQ-WB, STOI, and SI-SDR.
+**Justification of the Evalulation Method:** Since this is not a classification task, we cannot use accuracy as a metric. Instead, we use three metrics that are commonly used in speech denoising tasks: PESQ-WB, STOI, and SI-SNR(zero-mean variant).
 These metrics are widely accepted in the field of speech processing and have been shown to correlate well with human perception of speech quality and intelligibility.
 
 - PESQ‑WB – perceptual speech quality; correlates with MOS, suitable for denoising.
 
 - STOI – intelligibility score; gauges how well words remain recognisable.
 
-- SI‑SDR – scale‑invariant distortion ratio; measures residual interference independent of loudness.
+- SI-SNR – scale-invariant signal-to-noise ratio. We zero-mean both reference and estimate (TasNet convention) before the projection step, so values are numerically identical to the “zero-mean SI-SDR” often reported in recent separation papers. In our notebok, we named it SI-SDR. We will refer it as SI-SNR in this document.
 
 Together they capture quality, intelligibility and signal fidelity – a balanced trio for this task.
 
@@ -438,13 +438,13 @@ options:
 
 Here are some observations and next steps based on the results obtained so far:
 
-- **Model Generalization:** The model is able to generalize well to unseen data, as indicated by the test evaluation metrics on the test set. All three metrics (PESQ, STOI, and SI-SDR) have very similar values across the train, validation, and test sets. The training PESQ is slightly higher than the test PESQ, but not significantly. This indicates that the model is not overfitting too much and is able to generalize well to unseen data.
+- **Model Generalization:** The model is able to generalize well to unseen data, as indicated by the test evaluation metrics on the test set. All three metrics (PESQ, STOI, and SI-SNR) have very similar values across the train, validation, and test sets. The training PESQ is slightly higher than the test PESQ, but not significantly. This indicates that the model is not overfitting too much and is able to generalize well to unseen data.
 
 - **Perceptual Quality:** PESQ is 2.20 (WB) on the test set, which is a good score for speech denoising. However, we can still improve it further by fine-tuning the model and exploring different architectures.
 
 - **Intelligibility:** The model is able to preserve the intelligibility of the speech signal, as indicated by the STOI score of 0.92 on the test set. This means that the model is able to remove most of the high-frequency noise while preserving the intelligibility of the speech signal.
 
-- **Signal Fidelity:** The SI-SDR score of 16.71 dB on the test set indicates that the model is able to remove most of the high-frequency noise while preserving the signal fidelity. This is a good score for speech denoising.
+- **Signal Fidelity:** The SI-SNR score of 16.71 dB on the test set indicates that the model is able to remove most of the high-frequency noise while preserving the signal fidelity. This is a good score for speech denoising.
 
 - **Qualitative Results:** The denoised audio sounds much clearer and less noisy than the original noisy audio. But there is still some distortion or muffling present in the denoised audio. This is expected, as the model is still in the early stages of training and can be improved further.
 
@@ -473,15 +473,14 @@ The `test` directory contains the `denoise_audio.py` script that can be used to 
 - Evaluation of the final model on unseen test data and real-world recordings.
 
 ### 5.2 Architecture Recap
-The architecture of the U-Net autoencoder remains the same as described in Part 4. The model is trained to minimize a hybrid loss function that combines both magnitude and waveform losses, ensuring that the denoised output closely resembles the clean target signal. The use of LeakyReLU activations helps to mitigate the vanishing gradient problem, allowing for better training convergence.
+The architecture of the U-Net autoencoder remains the same as described in Part 4. The model is trained to minimize a hybrid loss function that combines both magnitude and waveform losses, ensuring that the denoised output closely resembles the clean target signal. The model uses a U-Net architecture with skip connections to capture both local and global features relevant to removing high-frequency noise. The encoder path compresses the input signal into a lower-dimensional representation, while the decoder path reconstructs the output signal using skip connections to retain important details.
 
 The model is trained on 2-s segments of audio, and the overlap–add strategy is used to denoise longer audio files. The model is able to generalize well to unseen data, as indicated by the test evaluation metrics on the test set. The training PESQ is slightly higher than the test PESQ, but not significantly. This indicates that the model is not overfitting too much and is able to generalize well to unseen data.
 
 See [4.2](#42-current-network-architecture) for more details on the architecture.
 
 ### 5.3 Training Dataset Recap
-We initially planned to use the LibriSpeech `train-clean-100` dataset, but we found that the test-clean dataset is already large enough to train our model. We just needed to add more diverse noise samples to the dataset. 
-We used the LibriSpeech `test-clean` dataset to create our training and validation data. 
+We initially planned to use the LibriSpeech `train-clean-100` dataset, but we found that the `test-clean` dataset is already large enough to train our model. We just needed to add more diverse noise samples to the dataset. 
 
 LibriSpeech `test-clean` dataset contains 2620 audio samples. We used 4 real-world noise recording from my phone to create 2620 noisy audio samples. We mixed the clean audio samples with the noise recordings at different SNR levels (0, 5, 10, 15 dB). This resulted in a total of 2620 clean audio samples and 2620 noisy audio samples.
 
@@ -498,15 +497,15 @@ We used LibriSpeech `dev-clean` dataset to create our final test dataset. The `d
 
 
 ### 5.5 Evaluation of the Final Model on Unseen Test Data
-In our fine-tuning step, we used PESQ-WB, STOI, and SI-SDR as our evaluation metrics.  Since this is not a classification task, we cannot use accuracy as a metric. PESQ-WB stands for Perceptual Evaluation of Speech Quality (Wideband), which is a widely used metric for evaluating the quality of speech signals. STOI stands for Short-Time Objective Intelligibility, which measures the intelligibility of speech signals. SI-SDR stands for Scale-Invariant Signal-to-Distortion Ratio, which measures the distortion in the output signal. We used the same metrics to evaluate the final model on the unseen test data.
+In our fine-tuning step, we used PESQ-WB, STOI, and SI-SNR as our evaluation metrics.  Since this is not a classification task, we cannot use accuracy as a metric. PESQ-WB stands for Perceptual Evaluation of Speech Quality (Wideband), which is a widely used metric for evaluating the quality of speech signals. STOI stands for Short-Time Objective Intelligibility, which measures the intelligibility of speech signals. SI-SNR stands for Scale-Invariant Signal-to-Noise Ratio, which measures the distortion in the output signal. We zero-mean both reference and estimate (TasNet convention) before the projection step, so values are numerically identical to the “zero-mean SI-SDR” often reported in recent separation papers. In our part 4 notebok, we named it SI-SDR. We will refer it as SI-SNR in this document. 
 
 For our final test dataset, we got the following results:
 - **PESQ-WB:** 1.91
 - **STOI:** 0.87
-- **SI-SDR:** 13.59 dB
+- **SI-SNR:** 13.59 dB
 
 In comparison, we got the following results on the training and validation and previous test datasets:
-| Split | PESQ‑WB ↑ | STOI ↑ | SI‑SDR [dB] ↑ |
+| Split | PESQ‑WB ↑ | STOI ↑ | SI‑SNR [dB] ↑ |
 |-------|-----------|--------|---------------|
 | **Train** | `2.22` | `0.92` | `16.83` |
 | **Val**   | `2.22` | `0.92` | `16.90` |
@@ -519,7 +518,7 @@ Lets first understand the results we got on the unseen test data. The PESQ-WB sc
 
 In essence, while the STOI score indicates that the model effectively preserves the content of the speech, the PESQ-WB score reveals that the overall listening experience is compromised. The model manages to remove enough noise for the words to be understood, but it introduces or fails to eliminate other distortions that detract from the perceived naturalness and clarity of the speech.
 
-The SI-SDR of 13.59 dB confirms that the model is indeed reducing the overall level of noise and distortion. However, the perceptual quality, as captured by PESQ-WB, is not on par with this reduction. This suggests that the model's distortion reduction is not always aligned with what humans perceive as high-quality audio.
+The SI-SNR of 13.59 dB confirms that the model is indeed reducing the overall level of noise and distortion. However, the perceptual quality, as captured by PESQ-WB, is not on par with this reduction. This suggests that the model's distortion reduction is not always aligned with what humans perceive as high-quality audio.
 
 The qualitative results also support this. The denoised audio sounds much clearer and less noisy than the original noisy audio. But there is still some distortion or muffling present in the denoised audio. This is expected, as the model is still in the early stages of training and can be improved further. Here are three audio files: clean, noisy, and denoised. The clean audio is the original recording, while the noisy audio has high-frequency noise added. The denoised audio is the output of our trained model.
 
@@ -539,7 +538,7 @@ Here are some possible reasons for this:
 - **Limited training data:** Although we thought that the `test-clean` dataset is large enough to train our model, it is still a small dataset compared to the `train-clean-100` dataset. We need to train the model on a larger dataset to ensure that it can generalize well to unseen data.
 
 ### 5.7 Real-World Noisy Sample Evaluation
-We also evaluated the model on real-world noisy samples. We recorded some speech audio samples with my phone in a noisy environment. We then denoised the audio samples using the trained model. Since we do not have the clean audio samples, we cannot evaluate the model using PESQ-WB, STOI, and SI-SDR metrics. But we can look at the waveform and spectrogram of the denoised audio samples to see how well the model is able to remove the high-frequency noise.
+We also evaluated the model on real-world noisy samples. We recorded some speech audio samples with my phone in a noisy environment. We then denoised the audio samples using the trained model. Since we do not have the clean audio samples, we cannot evaluate the model using PESQ-WB, STOI, and SI-SNR metrics. But we can look at the waveform and spectrogram of the denoised audio samples to see how well the model is able to remove the high-frequency noise.
 
 **todo: add audio samples and figures**
 
